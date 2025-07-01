@@ -1,10 +1,19 @@
-from app.schemas.user import UserRegister
+from app.schemas.user import UserRegister, Token
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Body, HTTPException
+from passlib.context import CryptContext
 from starlette.status import HTTP_400_BAD_REQUEST
 from typing import Annotated
 
 router = APIRouter()
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
 @router.post("/register")
 def register(user: Annotated[UserRegister, Body()]):
@@ -24,6 +33,8 @@ def register(user: Annotated[UserRegister, Body()]):
 
     if not name:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Name must be filled!")
+
+    password = hash_password(password)
 
     return {
         "name": name,
