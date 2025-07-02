@@ -1,11 +1,18 @@
 from app.schemas.user import UserRegister, Token
+from datetime import timedelta, datetime, timezone
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Body, HTTPException
 from passlib.context import CryptContext
 from starlette.status import HTTP_400_BAD_REQUEST
 from typing import Annotated
+import jwt
+import os
 
 router = APIRouter()
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -14,6 +21,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
+
+def create_access_token(data: dict[str, any], expired_token: timedelta):
+    to_encode = data.copy()
+
+    expired = datetime.now(timezone.utc) + expired_token
+
+    to_encode.update({"exp": expired})
+
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, JWT_ALGORITHM)
+
+    return encoded_jwt
 
 @router.post("/register")
 def register(user: Annotated[UserRegister, Body()]):
@@ -36,8 +54,15 @@ def register(user: Annotated[UserRegister, Body()]):
 
     password = hash_password(password)
 
-    return {
-        "name": name,
-        "email": email,
-        "password": password
-    }
+    expired_token = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    access_token = create_access_token(
+        data = {
+            "id": 10, # fake id
+            "email": email,
+            "name": name
+        },
+        expired_token = expired_token
+    )
+
+    return Token(access_token=access_token, token_type="bearer")
