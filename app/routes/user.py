@@ -1,18 +1,24 @@
+from fastapi.params import Depends
+
 from app.schemas.user import UserRegister, Token
+from app.core.config import Settings
+from app.core.database import get_db
+from app.crud.user import create_user
 from datetime import timedelta, datetime, timezone
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Body, HTTPException
 from passlib.context import CryptContext
 from starlette.status import HTTP_400_BAD_REQUEST
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 import jwt
-import os
 
 router = APIRouter()
 
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+JWT_SECRET_KEY = Settings.JWT_SECRET_KEY
+JWT_ALGORITHM = Settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = Settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -34,7 +40,7 @@ def create_access_token(data: dict[str, any], expired_token: timedelta):
     return encoded_jwt
 
 @router.post("/register")
-def register(user: Annotated[UserRegister, Body()]):
+def register(user: Annotated[UserRegister, Body()], db: Session = Depends(get_db)):
     try:
         email = validate_email(user.email, check_deliverability=True)
 
@@ -56,13 +62,24 @@ def register(user: Annotated[UserRegister, Body()]):
 
     expired_token = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    user.password = password
+
+    try:
+        user_model = create_user(db, user)
+    except IntegrityError as err:
+        db.rollback()
+
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Email already registered!")
+    finally:
+        db.close()
+
     access_token = create_access_token(
-        data = {
-            "id": 10, # fake id
+        data={
+            "id": user_model.id,
             "email": email,
             "name": name
         },
-        expired_token = expired_token
+        expired_token=expired_token
     )
 
     return Token(access_token=access_token, token_type="bearer")

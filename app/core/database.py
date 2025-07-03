@@ -6,3 +6,11 @@ Base = declarative_base()
 
 engine = create_engine(Settings.SQLALCHEMY_DATABASE_URI)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    session = SessionLocal()
+
+    try:
+        yield session
+    finally:
+        session.close()
