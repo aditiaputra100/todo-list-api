@@ -5,6 +5,9 @@ class UserRegister(BaseModel):
     email: str = Field(title="Email", description="Email of the user", examples=["john_doe@email.com"])
     password: str = Field(title="Password", description="Password of the user", examples=["john123"])
 
+class UserLogin(BaseModel):
+    email: str = Field(title="Email", description="Email of the user", examples=["john_doe@email.com"])
+    password: str = Field(title="Password", description="Password of the user", examples=["john123"])
 
 class Token(BaseModel):
     access_token: str

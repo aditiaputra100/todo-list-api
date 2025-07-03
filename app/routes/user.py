@@ -1,9 +1,9 @@
 from fastapi.params import Depends
 
-from app.schemas.user import UserRegister, Token
+from app.schemas.user import UserRegister, UserLogin, Token
 from app.core.config import Settings
 from app.core.database import get_db
-from app.crud.user import create_user
+from app.crud.user import create_user, get_user_by_email
 from datetime import timedelta, datetime, timezone
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Body, HTTPException
@@ -78,6 +78,33 @@ def register(user: Annotated[UserRegister, Body()], db: Session = Depends(get_db
             "id": user_model.id,
             "email": email,
             "name": name
+        },
+        expired_token=expired_token
+    )
+
+    return Token(access_token=access_token, token_type="bearer")
+
+@router.post("/login")
+def login(user: Annotated[UserLogin, Body()], db: Session = Depends(get_db)):
+    email: str = user.email
+
+    user_model = get_user_by_email(db, email)
+
+    if not user_model:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="User not found")
+
+    password = user.password
+
+    if not verify_password(password, user_model.password):
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Password is wrong")
+
+    expired_token = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    access_token = create_access_token(
+        data={
+            "id": user_model.id,
+            "email": user_model.email,
+            "name": user_model.name
         },
         expired_token=expired_token
     )
