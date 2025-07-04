@@ -1,4 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from sqlalchemy.sql import func
 
@@ -10,3 +12,5 @@ class User(Base):
     email = Column(String(255), nullable=False, unique=True, index=True)
     password = Column(String(255), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+    todo = relationship("Todo", back_populates="user")
