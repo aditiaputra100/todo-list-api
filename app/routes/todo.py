@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Depends
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from app.schemas.todo import Todo, TodoCreateResponse
 from app.schemas.user import User
 from app.core.database import get_db
@@ -44,3 +44,21 @@ def update_todo(todo_id: int, todo: Annotated[Todo, Body()], user: User = Depend
     todo_crud.update_todo_by_id(db, todo_id, todo)
 
     return todo
+
+# Todo : delete item by id
+@router.delete("/{todo_id}", status_code=HTTP_204_NO_CONTENT)
+def delete_todo(todo_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    model = todo_crud.get_todo_by_id(db, todo_id)
+
+    if not model:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Todo not found")
+
+    if model.user_id != user.id:
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                            detail=f"User id {user.id} doesn't have access to todo {model.id}")
+
+    todo_crud.delete_todo_by_id(db, todo_id)
+
+# Todo : create to get all item
+
+# Todo : create to get item by id

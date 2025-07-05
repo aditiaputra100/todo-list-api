@@ -20,3 +20,8 @@ def update_todo_by_id(db: Session, todo_id: int, todo: TodoSchema):
     db.query(Todo).where(Todo.id == todo_id).update(todo.model_dump())
 
     db.commit()
+
+def delete_todo_by_id(db: Session, todo_id: int) -> None:
+    db.query(Todo).where(Todo.id == todo_id).delete()
+
+    db.commit()
