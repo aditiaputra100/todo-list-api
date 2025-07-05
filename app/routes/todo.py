@@ -1,7 +1,8 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, HTTPException, Depends, Query
+from fastapi.exceptions import RequestValidationError
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
-from app.schemas.todo import Todo, TodoCreateResponse
+from app.schemas.todo import Todo, TodoCreateResponse, TodoListResponse
 from app.schemas.user import User
 from app.core.database import get_db
 from app.crud import todo as todo_crud
@@ -45,7 +46,6 @@ def update_todo(todo_id: int, todo: Annotated[Todo, Body()], user: User = Depend
 
     return todo
 
-# Todo : delete item by id
 @router.delete("/{todo_id}", status_code=HTTP_204_NO_CONTENT)
 def delete_todo(todo_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     model = todo_crud.get_todo_by_id(db, todo_id)
@@ -59,6 +59,16 @@ def delete_todo(todo_id: int, user: User = Depends(get_current_user), db: Sessio
 
     todo_crud.delete_todo_by_id(db, todo_id)
 
-# Todo : create to get all item
+@router.get("/", response_model=TodoListResponse)
+def get_all_todo(page: int = 1, limit: int = 10, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if page < 1:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Page must be >= 1")
+
+    if limit < 1:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Limit must be >= 1")
+
+    todo = todo_crud.find_all(db, user_id=user.id, limit=limit, page=page)
+
+    return TodoListResponse(data=todo, page=page, limit=limit, total=len(todo))
 
 # Todo : create to get item by id
