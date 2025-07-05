@@ -12,3 +12,8 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class User(BaseModel):
+    id: int = Field(title="Id", description="Id of the user", examples=[1])
+    email: str = Field(title="Email", description="Email of the user", examples=["john_doe@email.com"])
+    name: str = Field(title="Name", description="Full name of the user", examples=["John Doe"])
